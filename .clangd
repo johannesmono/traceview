@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - -std=c99
+    - -O3
+    - -march=native
+    - -Wall
+    - -Wconversion
+    - -Wextra
+    - -Wpedantic
+    - -Wshadow
+    - -Wundef
+    - -Wunused
+    - -Wvla

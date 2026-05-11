@@ -1,0 +1,18 @@
+ColumnLimit: 100
+UseTab: AlignWithSpaces
+TabWidth: 8
+IndentWidth: 8
+
+MaxEmptyLinesToKeep: 2
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+
+AlignAfterOpenBracket: BlockIndent
+BreakAfterReturnType: TopLevelDefinitions
+BreakBeforeBraces: Linux
+BreakBeforeTernaryOperators: false
+Cpp11BracedListStyle: false
+
+SpaceBeforeParens: ControlStatementsExceptControlMacros
+AllowShortBlocksOnASingleLine: Empty

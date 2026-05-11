@@ -1,0 +1,6 @@
+[submodule "sokol"]
+	path = sokol
+	url = https://github.com/floooh/sokol
+[submodule "nuklear"]
+	path = nuklear
+	url = https://github.com/Immediate-Mode-UI/Nuklear
