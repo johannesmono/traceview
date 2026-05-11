@@ -686,7 +686,7 @@ tv_sapp_frame(void)
 
 		nk_layout_row_dynamic(ctx, 32, 2);
 		nk_labelf(ctx, NK_TEXT_LEFT, "traceview: %s", tv_global.filepath);
-		nk_labelf(ctx, NK_TEXT_RIGHT, "%.0lfps", fps);
+		nk_labelf(ctx, NK_TEXT_RIGHT, "%.0lffps", fps);
 
 		nk_layout_row(ctx, NK_STATIC, height - 44, 3, (float[]){ 132, 1, width - 149 });
 		if (nk_group_begin(ctx, "column0", 0)) {
