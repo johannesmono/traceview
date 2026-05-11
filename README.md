@@ -11,6 +11,8 @@ A simple visualizer for electromagnetic traces with 8-bit vertical resolution.
 * [Largest-Triangle-Three-Buckets (LTTB)](https://skemman.is/handle/1946/15343) downsampling
 * configurable LTTB bucket size (click on "LTTB Buckets")
 
+Demo: https://www.asdf.one/traceview.mov
+
 
 ## Build
 
