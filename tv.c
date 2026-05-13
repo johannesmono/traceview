@@ -53,6 +53,16 @@ tv_prng_init(u32 state[4], u32 seed)
 	x = (x ^ (x >> 16)) * 0x85ebca6b;
 	x = (x ^ (x >> 13)) * 0xc2b2ae35;
 	state[1] = x ^ (x >> 16);
+
+	x = (seed += 0x9e3779b9);
+	x = (x ^ (x >> 16)) * 0x85ebca6b;
+	x = (x ^ (x >> 13)) * 0xc2b2ae35;
+	state[2] = x ^ (x >> 16);
+
+	x = (seed += 0x9e3779b9);
+	x = (x ^ (x >> 16)) * 0x85ebca6b;
+	x = (x ^ (x >> 13)) * 0xc2b2ae35;
+	state[3] = x ^ (x >> 16);
 }
 
 static u32
@@ -290,8 +300,8 @@ tv_filters_parse(char const *s)
 	char *p = cpy;
 
 	u16 flen = 0;
-	int last = 0;
-	while (!last) {
+	bool last = false;
+	for (;;) {
 		char *next = strchr(p, ',');
 		if (next == 0)
 			last = 1;
@@ -309,7 +319,7 @@ tv_filters_parse(char const *s)
 
 		char *end;
 		long bound0 = strtol(p, &end, 0);
-		if (bound0 > traces)
+		if (bound0 >= traces)
 			return false;
 		f->bounds[0] = (u16)bound0;
 
@@ -331,6 +341,8 @@ tv_filters_parse(char const *s)
 
 		++f;
 		++flen;
+		if (last)
+			break;
 		p = next + 1;
 	}
 	tv_global.filters_len = flen;
@@ -461,8 +473,8 @@ tv_draw_traces(float x0, float x1, nk_bool colorize)
 	struct tv_highlight *h = tv_global.highlights;
 	u16 hlen = tv_global.highlights_len;
 
-	TV_ASSERT(0 <= (u32)x0 && (u32)x0 < points);
-	TV_ASSERT(0 <= (u32)x1 && (u32)x1 < points);
+	TV_ASSERT((u32)x0 < points);
+	TV_ASSERT((u32)x1 < points);
 	TV_ASSERT(x0 < x1);
 	u32 off0 = (u32)x0;
 	u32 off1 = (u32)x1;
@@ -481,7 +493,7 @@ tv_draw_traces(float x0, float x1, nk_bool colorize)
 		s8 *p = d + t * points + off0;
 		u32 x = off0;
 		sgl_v2f(x, *p++);
-		while (x++ < off1) {
+		while (++x < off1) {
 			sgl_v2f(x, *p);
 			sgl_v2f(x, *p++);
 		}
@@ -496,7 +508,7 @@ tv_draw_traces(float x0, float x1, nk_bool colorize)
 		s8 *p = d + t * points + off0;
 		u32 x = off0;
 		sgl_v2f(x, *p++);
-		while (x++ < off1) {
+		while (++x < off1) {
 			sgl_v2f(x, *p);
 			sgl_v2f(x, *p++);
 		}
@@ -510,14 +522,12 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 {
 	TV_ASSERT(buckets > 2 && points > 2);
 	buckets -= 2;
-	points -= 2;
 
-	float points_per_bucket = (float)points / buckets;
+	float points_per_bucket = (points - 2.0f) / buckets;
 	float ppb_frac = points_per_bucket;
 
-	u32 x0 = 0;
 	s8 y0 = *data++;
-	sgl_v2f(x0, y0);
+	sgl_v2f(0, y0);
 
 	u32 p = 1;
 	u32 dx0 = 1;
@@ -528,10 +538,12 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 		s8 const *next = data + ppb;
 
 		float avg = 0;
-		u32 i = ppb_next;
-		while (i--)
-			avg += *next++;
-		avg /= ppb_next;
+		if (ppb_next > 0) {
+			u32 i = ppb_next;
+			while (i--)
+				avg += *next++;
+			avg /= ppb_next;
+		}
 
 		float dx = dx0 + ppb + (ppb_next - 1) / 2.0f;
 		float dy = avg - y0;
@@ -540,7 +552,7 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 		s8 ymax = 0;
 		for (u32 x = 0; x < ppb; ++x) {
 			s8 y = *data++;
-			float area = tv_absf(.5f * (dx * (y - y0) - dy * (x - x0)));
+			float area = tv_absf(.5f * (dx * (y - y0) - dy * (x + dx0)));
 			if (area > area_max) {
 				area_max = area;
 				xmax = x;
@@ -550,15 +562,14 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 		if (area_max > 0) {
 			sgl_v2f(p + xmax, ymax);
 			sgl_v2f(p + xmax, ymax);
-		}
-
+			dx0 = ppb - xmax;
+			y0 = ymax;
+		} else
+			dx0 += ppb;
 		p += ppb;
-		x0 = xmax;
-		y0 = ymax;
-		dx0 = ppb - x0;
 	}
 
-	u32 ppb = points - p;
+	u32 ppb = points - p - 1;
 	s8 ylast = data[ppb];
 	float dx = dx0 + ppb;
 	float dy = ylast - y0;
@@ -567,7 +578,7 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 	s8 ymax = 0;
 	for (u32 x = 0; x < ppb; ++x) {
 		s8 y = *data++;
-		float area = tv_absf(.5f * (dx * (y - y0) - dy * (x - x0)));
+		float area = tv_absf(.5f * (dx * (y - y0) - dy * (x + dx0)));
 		if (area > area_max) {
 			area_max = area;
 			xmax = x;
@@ -578,7 +589,7 @@ tv_draw_lttb(s8 const *data, u32 points, u32 buckets)
 		sgl_v2f(p + xmax, ymax);
 		sgl_v2f(p + xmax, ymax);
 	}
-	sgl_v2f(points - 1, ylast);
+	sgl_v2f(p + ppb, ylast);
 }
 
 void
@@ -707,7 +718,7 @@ tv_sapp_frame(void)
 			nk_labelf(ctx, NK_TEXT_RIGHT, "%" PRIu32, buckets);
 			nk_style_pop_float(ctx);
 			{
-				buckets = (u32)NK_MAX(3, img_w);
+				buckets = NK_CLAMP(3, (u32)img_w, points);
 				static bool bucketing = false;
 				static char buf[11] = { 0 };
 				nk_flags state = 0;
@@ -755,7 +766,7 @@ tv_sapp_frame(void)
 
 					nk_style_push_float(ctx, &ctx->style.window.spacing.x, 0);
 					nk_layout_row(
-					    ctx, NK_STATIC, 12, 4, (float[]){ 18, 4, 85, 24, 1 }
+					    ctx, NK_STATIC, 12, 5, (float[]){ 18, 4, 85, 24, 1 }
 					);
 					struct nk_vec2 pad = { 3, -1 };
 					if (tv_button_color_picker(ctx, c, pad))
@@ -843,7 +854,6 @@ tv_sapp_frame(void)
 				nk_spacing(ctx, 1);
 				if (nk_button_label(ctx, "Cancel"))
 					adding = cp.picking = *buf = 0;
-				nk_spacing(ctx, 1);
 				nk_style_pop_float(ctx);
 			} else {
 				u32 r = tv_prng_squeeze(tv_global.prng);
@@ -856,7 +866,6 @@ tv_sapp_frame(void)
 					nk_button_label_styled(ctx, &sb_inactive, "Add");
 				else if (nk_button_label(ctx, "Add"))
 					adding = 1;
-				nk_spacing(ctx, 3);
 				nk_style_pop_float(ctx);
 			}
 		column0_end:
