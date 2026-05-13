@@ -14,7 +14,7 @@ A simple visualizer for electromagnetic traces with 8-bit vertical resolution.
 Demo: https://www.asdf.one/traceview.mov
 
 
-## Build
+## Usage
 
 On MacOS with Metal, build and run traceview:
 
